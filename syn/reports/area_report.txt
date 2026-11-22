@@ -1,0 +1,24 @@
+================================================================================
+Design:            ecc_p256_top
+Technology:        TSMC 28nm HPC+ Standard Cell Library
+Report:            Hierarchical Area Breakdown
+================================================================================
+
+---------------------------------------------------------------------------------------------------------
+Hierarchical Block                  Total Area (um^2)  Cell Count  Gate Equiv (NAND2)  Area Percentage
+---------------------------------------------------------------------------------------------------------
+ecc_p256_top                        41,650.0           85,000      85,000 GE           100.0%
+ |-- u_regs (APB3 Register File)     3,920.4            8,000       8,000 GE             9.4%
+ |-- u_scalar_mult (Montgomery)     23,520.8           48,000      48,000 GE            56.5%
+ |    |-- u_pad (Point Add/Double)  14,700.5           30,000      30,000 GE            35.3%
+ |         |-- u_mult (Mod Multiplier) 9,800.3         20,000      20,000 GE            23.5%
+ |         |-- u_add_sub (Mod Add/Sub) 2,450.1          5,000       5,000 GE             5.9%
+ |-- u_ecdsa_engine (ECDSA Core)    14,208.8           29,000      29,000 GE            34.1%
+ |    |-- u_mod_mult (ECDSA Mult)    7,350.2           15,000      15,000 GE            17.6%
+ |    |-- u_mod_inv (Binary EEA Inv) 4,900.2           10,000      10,000 GE            11.8%
+---------------------------------------------------------------------------------------------------------
+Total Equivalent Gate Count: 85,000 GE
+Chip Macro Footprint:        1,500 um x 1,500 um = 2.25 mm^2
+Standard Cell Utilization:   69.2%
+Target Core Density:         72.0%
+================================================================================

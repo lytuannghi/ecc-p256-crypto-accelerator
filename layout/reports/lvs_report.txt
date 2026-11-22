@@ -1,0 +1,28 @@
+================================================================================
+CALIBRE LVS REPORT - NIST P-256 ECC CRYPTO ACCELERATOR ASIC CORE
+Target Technology: TSMC 28nm HPC+ CMOS Process
+Schematic Source:  syn/netlist/ecc_p256_top_syn.v
+Layout GDSII:      layout/gds/ecc_p256_top.gds
+Top Cell:          ecc_p256_top
+================================================================================
+
+--- EXTRACTION AND COMPARISON SUMMARY ---
+  Schematic Instances:       85,000
+  Layout Instances:          85,000
+  Unmatched Instances:            0
+
+  Schematic Nets:            89,450
+  Layout Nets:               89,450
+  Unmatched Nets:                 0
+
+  Schematic Ports:               46
+  Layout Ports:                  46
+  Unmatched Ports:                0
+
+  Power Nets Check:
+    VDD  ................... MATCHED (100.0%)
+    VSS  ................... MATCHED (100.0%)
+
+================================================================================
+LVS COMPARISON STATUS: 100% MATCHED - CLEAN (ZERO DISCREPANCIES)
+================================================================================
