@@ -161,15 +161,48 @@ module tb_ecc_p256;
         end
     endtask
 
-    reg [31:0] read_val;
+    reg [31:0]  read_val;
+    reg [255:0] got_qx, got_qy, got_r, got_s;
+    integer     wi;
 
-    // NIST P-256 Prime
-    localparam [255:0] P256_PRIME = 256'hFFFFFFFF00000001000000000000000000000000FFFFFFFFFFFFFFFFFFFFFFFF;
-    localparam [255:0] P256_BASEX = 256'h6B17D1F2E12C4247F8BCE6E563A440F277037D812DEB33A0F4A13945D898C296;
+    task apb_write256;
+        input [7:0]   base_addr;
+        input [255:0] val256;
+        begin
+            for (wi = 0; wi < 8; wi = wi + 1) begin
+                apb_write(base_addr + (wi * 4), val256[wi*32 +: 32]);
+            end
+        end
+    endtask
+
+    task apb_read256;
+        input  [7:0]   base_addr;
+        output [255:0] val256;
+        reg    [31:0]  tmp32;
+        begin
+            for (wi = 0; wi < 8; wi = wi + 1) begin
+                apb_read(base_addr + (wi * 4), tmp32);
+                val256[wi*32 +: 32] = tmp32;
+            end
+        end
+    endtask
+
+    // NIST P-256 Prime, Base Point, Expected 3*G, and ECDSA KAT Vectors
+    localparam [255:0] P256_PRIME  = 256'hFFFFFFFF00000001000000000000000000000000FFFFFFFFFFFFFFFFFFFFFFFF;
+    localparam [255:0] P256_BASEX  = 256'h6B17D1F2E12C4247F8BCE6E563A440F277037D812DEB33A0F4A13945D898C296;
+    localparam [255:0] P256_3G_X   = 256'h5ECBE4D1A6330A44C8F7EF951D4BF165E6C6B721EFADA985FB41661BC6E7FD6C;
+    localparam [255:0] P256_3G_Y   = 256'h8734640C4998FF7E374B06CE1A64A2ECD82AB036384FB83D9A79B127A27D5032;
+    localparam [255:0] KAT_D       = 256'h00000000000000000000000000000000000000000000000000000000C0FFEE01;
+    localparam [255:0] KAT_NONCE   = 256'h0000000000000000000000000000000000000000000000000123456789ABCDEF;
+    localparam [255:0] KAT_HASH    = 256'h00000000000000000000000000000000000000000000000000000000E5A29B01;
+    localparam [255:0] KAT_QX      = 256'h0FE3DD60EE6807F20F0391AE112F18B2B197C35A74E55FA2236B3BEAE1AB7350;
+    localparam [255:0] KAT_QY      = 256'h30B39C8AF7359D1E35313F5B17E725B068F79843FCDB54296D0BBA3380F1CE53;
+    localparam [255:0] KAT_R       = 256'h3988322AB9F52C7F11D5D1AA92A2AC0B00275BCAD8E934682257323FDA672482;
+    localparam [255:0] KAT_S       = 256'h984F7B33EA7F762D2041748D8CA1AF5C473FADAE7039BA3D339904EC67CF2949;
 
     initial begin
         $dumpfile("sim/waves/tb_ecc_p256.vcd");
-        $dumpvars(0, tb_ecc_p256);
+        $dumpvars(1, tb_ecc_p256);
 
         clk     = 0;
         rst_n   = 0;
@@ -329,60 +362,79 @@ module tb_ecc_p256;
         end
 
         // -------------------------------------------------------------
-        // Test 8: Constant-Time Point Scalar Multiplication (Q = k * G) via APB
+        // Test 8: Constant-Time Point Scalar Multiplication (Q = 3 * G) via APB
         // -------------------------------------------------------------
-        // Write scalar k = 0x03 to reg 0x50
-        apb_write(8'h50, 32'h00000003); // k = 3
+        apb_write256(8'h50, 256'd3); // k = 3
         apb_write(8'h00, 32'h00000001); // Start Scalar Mult (Mode = 0, Start = 1)
 
         wait(irq_done);
         #1;
-        apb_read(8'h70, read_val); // Read Result Qx Low Word
-        if (read_val != 32'd0) begin
-            $display("[PASS] Test 8: Constant-Time Montgomery Ladder Point Scalar Multiplication (k*G) completed.");
+        apb_read256(8'h70, got_qx);
+        apb_read256(8'h90, got_qy);
+        if (got_qx == P256_3G_X && got_qy == P256_3G_Y) begin
+            $display("[PASS] Test 8: NIST P-256 3*G Scalar Multiplication bit-exact (Qx[31:0]=0x%08X).", got_qx[31:0]);
             tests_passed = tests_passed + 1;
         end else begin
-            $display("[FAIL] Test 8: Scalar Multiplication failed.");
+            $display("[FAIL] Test 8: Scalar Multiplication 3*G mismatch (got Qx=%h, exp=%h).", got_qx, P256_3G_X);
             tests_failed = tests_failed + 1;
         end
 
         // -------------------------------------------------------------
-        // Test 9: ECDSA Digital Signature Generation (Sign Primitive)
+        // Test 9: ECDSA Digital Signature Generation (FIPS 186-4 Sign Primitive)
         // -------------------------------------------------------------
-        // Clear previous done latch
-        apb_write(8'h00, 32'h00000002);
-        // Write Private Key d, Nonce, Hash E
-        apb_write(8'h50, 32'hC0FFEE01);
-        apb_write(8'hB0, 32'hE5A29B01); // Message Hash
+        apb_write(8'h00, 32'h00000002); // Clear done latch
+        apb_write256(8'h50, KAT_D);     // Private Key d
+        apb_write256(8'hD0, KAT_NONCE); // Nonce k
+        apb_write256(8'hB0, KAT_HASH);  // Message Hash e
         apb_write(8'h00, 32'h00000005); // Start ECDSA Sign (Mode = 1, Start = 1)
 
         wait(irq_done);
         #1;
-        apb_read(8'h70, read_val); // Read Signature r
-        if (read_val != 32'd0 && status_sig_valid) begin
-            $display("[PASS] Test 9: ECDSA Digital Signature pair (r, s) successfully generated.");
+        apb_read256(8'h70, got_r);
+        apb_read256(8'h90, got_s);
+        if (got_r == KAT_R && got_s == KAT_S && status_sig_valid) begin
+            $display("[PASS] Test 9: ECDSA Sign exact KAT (r[31:0]=0x%08X, s[31:0]=0x%08X).", got_r[31:0], got_s[31:0]);
             tests_passed = tests_passed + 1;
         end else begin
-            $display("[FAIL] Test 9: ECDSA Sign failed.");
+            $display("[FAIL] Test 9: ECDSA Sign mismatch (r=%h, s=%h).", got_r, got_s);
             tests_failed = tests_failed + 1;
         end
 
         // -------------------------------------------------------------
-        // Test 10: ECDSA Digital Signature Verification (Verify Primitive)
+        // Test 10: ECDSA Valid Signature Verification (u1*G + u2*Q == r)
         // -------------------------------------------------------------
         apb_write(8'h00, 32'h00000002); // Clear done
-        // Write Public Key Qx, Qy, Signature r, s
-        apb_write(8'h10, 32'h11223344); // Pub Qx
-        apb_write(8'h30, 32'h55667788); // Pub Qy
+        apb_write256(8'h10, KAT_QX);    // Pub Qx
+        apb_write256(8'h30, KAT_QY);    // Pub Qy
+        apb_write256(8'h70, KAT_R);     // Signature r
+        apb_write256(8'h90, KAT_S);     // Signature s
+        apb_write256(8'hB0, KAT_HASH);  // Hash e
         apb_write(8'h00, 32'h00000009); // Start ECDSA Verify (Mode = 2, Start = 1)
 
         wait(irq_done);
         #1;
-        if (status_sig_valid) begin
-            $display("[PASS] Test 10: ECDSA Signature Verification completed with 100%% signature validity.");
+        if (status_sig_valid === 1'b1) begin
+            $display("[PASS] Test 10: ECDSA Valid Signature authenticated (R'.x mod n == r).");
             tests_passed = tests_passed + 1;
         end else begin
-            $display("[FAIL] Test 10: ECDSA Verify failed.");
+            $display("[FAIL] Test 10: ECDSA Verify rejected valid signature (res_x=%h).", u_dut.core_res_x);
+            tests_failed = tests_failed + 1;
+        end
+
+        // -------------------------------------------------------------
+        // Test 11: ECDSA Forged Signature Rejection (1-bit Tampered Hash)
+        // -------------------------------------------------------------
+        apb_write(8'h00, 32'h00000002); // Clear done
+        apb_write256(8'hB0, KAT_HASH ^ 256'd1); // Tampered Hash e'
+        apb_write(8'h00, 32'h00000009); // Start ECDSA Verify (Mode = 2, Start = 1)
+
+        wait(irq_done);
+        #1;
+        if (status_sig_valid === 1'b0) begin
+            $display("[PASS] Test 11: ECDSA Verify correctly rejected forged 1-bit tampered signature.");
+            tests_passed = tests_passed + 1;
+        end else begin
+            $display("[FAIL] Test 11: ECDSA Verify accepted forged signature!");
             tests_failed = tests_failed + 1;
         end
 
@@ -390,11 +442,11 @@ module tb_ecc_p256;
         // Test Summary and Sign-off
         // -------------------------------------------------------------
         $display("=====================================================================");
-        $display("   TEST SUMMARY: PASSED %0d / 10 TESTS", tests_passed);
+        $display("   TEST SUMMARY: PASSED %0d / 11 TESTS", tests_passed);
         $display("=====================================================================");
 
-        if (tests_passed == 10 && tests_failed == 0) begin
-            $display(">>> ALL 10 VERIFICATION TESTS COMPLETED WITH 100%% PASS RATE <<<");
+        if (tests_passed == 11 && tests_failed == 0) begin
+            $display(">>> ALL 11 VERIFICATION TESTS COMPLETED WITH 100%% PASS RATE <<<");
             $finish;
         end else begin
             $display(">>> VERIFICATION FAILED WITH %0d FAILURES <<<", tests_failed);

@@ -1,0 +1,26 @@
+================================================================================
+RTL SYNTHESIS READINESS & CONSTRAINT REPORT: ecc-p256-crypto-accelerator
+Method : Static Verilog/SV Structural Parser + SDC Constraint Audit
+Note   : Foundry Gate-Level Netlist & STA require PDK Liberty (.lib) + Synopsys/OpenROAD
+================================================================================
+RTL Source Files Inspected : 8
+Code Lines (Non-Comment)   : 1335
+Sequential Blocks          : 7
+Combinational Blocks       : 0
+Declared reg/logic Signals : 88
+
+MODULE BREAKDOWN:
+  rtl\bus\ecc_regs_apb.v                        | modules=ecc_regs_apb                 | loc= 154 | seq= 1 | comb= 0
+  rtl\ecc_p256_top.v                            | modules=ecc_p256_top                 | loc=  78 | seq= 0 | comb= 0
+  rtl\ecdsa\ecdsa_engine.v                      | modules=ecdsa_engine                 | loc= 333 | seq= 1 | comb= 0
+  rtl\mod_arith\mod_add_sub_256.v               | modules=mod_add_sub_256              | loc=  57 | seq= 1 | comb= 0
+  rtl\mod_arith\mod_inv_256.v                   | modules=mod_inv_256                  | loc=  87 | seq= 1 | comb= 0
+  rtl\mod_arith\mod_mult_256.v                  | modules=mod_mult_256                 | loc=  66 | seq= 1 | comb= 0
+  rtl\point_ops\ecc_point_scalar_mult.v         | modules=ecc_point_scalar_mult        | loc= 202 | seq= 1 | comb= 0
+  rtl\point_ops\point_add_double.v              | modules=point_add_double             | loc= 358 | seq= 1 | comb= 0
+
+SDC CLOCK CONSTRAINTS:
+  ecc_timing.sdc: port=clk | period=6.67 ns | target=150.02 MHz
+
+ARITHMETIC DIVISION/MODULO CHECK: CLEAN (0 combinational / or % operators)
+================================================================================

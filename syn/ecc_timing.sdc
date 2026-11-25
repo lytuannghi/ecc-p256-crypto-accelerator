@@ -1,6 +1,6 @@
 # ==============================================================================
 # Synopsys Design Constraints (SDC) - NIST P-256 ECC Cryptographic Accelerator ASIC
-# Target Technology: TSMC 28nm HPC+ Standard Cell Logic Library
+# Target Technology: SkyWater 130nm HD Standard Cell Library (1.80V, 25C)
 # Operating Corner: Worst-Case Slow-Slow Corner (SSG, 0.90V, 125C)
 # Target Frequency: 150.0 MHz (Period = 6.666 ns)
 # ==============================================================================

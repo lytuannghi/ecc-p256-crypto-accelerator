@@ -1,41 +1,8 @@
 ================================================================================
-Design:            ecc_p256_top
-Technology:        TSMC 28nm HPC+ Standard Cell Library (tcbn28hpcplusbwp12t35)
-Operating Corner:  Slow-Slow (SSG, 0.90V, 125C)
-Target Clock:      clk (Period = 6.666 ns -> 150.00 MHz)
+SDC TIMING CONSTRAINT & RTL REGISTER AUDIT: ecc_p256_top
+Constraint File: syn/ecc_timing.sdc
+Target Clock:    100.0 MHz (Period = 10.000 ns)
 ================================================================================
 
-  Point                                            Incr       Path
-  -----------------------------------------------------------------------------
-  clock clk (rise edge)                           0.000      0.000
-  clock network delay (ideal)                     0.000      0.000
-  clock uncertainty                              -0.300     -0.300
-
-  u_scalar_mult/u_pad/u_mult/r_accum_reg[255]/CLK 0.000      0.000 r
-  u_scalar_mult/u_pad/u_mult/r_accum_reg[255]/Q   0.142      0.142 f
-  u_scalar_mult/u_pad/u_mult/U310/ZN (FA1D1BWP)   0.218      0.360 r
-  u_scalar_mult/u_pad/u_mult/U385/CO (FA1D1BWP)   0.235      0.595 r
-  u_scalar_mult/u_pad/u_mult/U440/S  (FA1D1BWP)   0.210      0.805 f
-  u_scalar_mult/u_pad/u_mult/U520/ZN (AOI22D1BWP) 0.138      0.943 r
-  u_scalar_mult/u_pad/u_mult/U612/ZN (OAI21D1BWP) 0.115      1.058 f
-  u_scalar_mult/u_pad/u_mult/sub_p1_reg[255]/D    0.048      1.106 f
-  data arrival time                                          1.106
-
-  clock clk (rise edge)                           6.666      6.666
-  clock network delay (ideal)                     0.000      6.666
-  clock uncertainty                              -0.300      6.366
-  u_scalar_mult/u_pad/u_mult/sub_p1_reg[255]/CLK  0.000      6.366 r
-  library setup time                             -0.088      6.278
-  data required time                                         6.278
-  -----------------------------------------------------------------------------
-  data required time                                         6.278
-  data arrival time                                         -1.106
-  -----------------------------------------------------------------------------
-  slack (MET)                                               +5.172 ns
-
-================================================================================
-Timing Path Group 'clk':
-  Setup Slack:  +5.172 ns (MET)
-  Hold Slack:   +0.088 ns (MET)
-  Max Freq:     235.85 MHz (Constraint: 150.00 MHz)
-================================================================================
+Note: Gate-level post-synthesis STA slack requires external OpenSTA execution.
+Verified 0 combinational / or % operators and 100% functional pass under iverilog -Wall.
