@@ -50,14 +50,10 @@ The core integrates a constant-time Montgomery Ladder point scalar multiplicatio
 
 | Parameter | Specification | Realized Implementation |
 | :--- | :--- | :--- |
-| Target Semiconductor Node | SkyWater 130nm HPC+ Standard Cell Logic | tcbn28hpcplusbwp12t35 |
-| Target Clock Frequency | 150.00 MHz | 150.00 MHz (Max: 235.85 MHz) |
+| Target Semiconductor Node | SkyWater 130nm (`sky130_fd_sc_hd`) | 1P5M GDSII Layer Deck |
+| Target Clock Budget (SDC) | 150.00 MHz | Constrained in `syn/*.sdc` (external OpenSTA needed for slack) |
 | Clock Period | 6.666 ns | 6.666 ns |
-| Setup Timing Slack | Positive Slack (MET) | +5.172 ns (TNS: 0.000 ns) |
-| Hold Timing Slack | Positive Slack (MET) | +0.088 ns (WNS: 0.000 ns) |
-| Total Silicon Core Area | Sub-0.05 mm^2 Standard Cell Area | 41,650 um^2 (Die: 2.25 mm^2) |
-| Standard Cell Density | 60% - 75% | 69.2% Core Utilization |
-| Physical Layout Footprint | Symmetrical Macro Geometry | 1500.0 um x 1500.0 um |
+| GDSII Die Footprint | 420.00 um x 420.00 um | Geometric DRC Clean (0 violations) |
 | Verification Testbench Pass Rate | 100% Assertion Coverage | 11 / 11 Tests PASS (100.0%) |
 
 ---
@@ -94,44 +90,46 @@ The core integrates a constant-time Montgomery Ladder point scalar multiplicatio
 
 ---
 
-## Area Breakdown
+## RTL Synthesis Readiness & SDC Audit
 
-| :--- | :--- | :--- | :--- |
-| `ecc_p256_top` (Total) | 41,650.0 | 85,000 GE | 100.0% |
-| `u_regs` (APB3 Register File) | 3,920.4 | 8,000 GE | 9.4% |
-| `u_scalar_mult` (Montgomery Ladder) | 23,520.8 | 48,000 GE | 56.5% |
-| `|-- u_pad` (Point Add/Double) | 14,700.5 | 30,000 GE | 35.3% |
-| `|-- u_mult` (Modular Multiplier) | 9,800.3 | 20,000 GE | 23.5% |
-| `|-- u_add_sub` (Modular Add/Sub) | 2,450.1 | 5,000 GE | 5.9% |
-| `u_ecdsa_engine` (ECDSA Protocol Core)| 14,208.8 | 29,000 GE | 34.1% |
-| `|-- u_mod_mult` (ECDSA Multiplier) | 7,350.2 | 15,000 GE | 17.6% |
-| `|-- u_mod_inv` (Binary EEA Inverter) | 4,900.2 | 10,000 GE | 11.8% |
+Static Verilog-2005 structural parsing and SDC constraint audit were executed via `syn/analyze_rtl.py` (external Yosys/OpenROAD/OpenSTA required for post-synthesis gate counts, utilization, and STA slack):
 
----
+```text
+================================================================================
+RTL SYNTHESIS READINESS & CONSTRAINT REPORT: ecc-p256-crypto-accelerator
+Method : Static Verilog/SV Structural Parser + SDC Constraint Audit
+Note   : Foundry Gate-Level Netlist & STA require PDK Liberty (.lib) + Synopsys/OpenROAD
+================================================================================
+RTL Source Files Inspected : 8
+Code Lines (Non-Comment)   : 1335
+Sequential Blocks          : 7
+Combinational Blocks       : 0
+Declared reg/logic Signals : 88
 
-## Static Timing Analysis (STA) Summary
+MODULE BREAKDOWN:
+  rtl\bus\ecc_regs_apb.v                        | modules=ecc_regs_apb                 | loc= 154 | seq= 1 | comb= 0
+  rtl\ecc_p256_top.v                            | modules=ecc_p256_top                 | loc=  78 | seq= 0 | comb= 0
+  rtl\ecdsa\ecdsa_engine.v                      | modules=ecdsa_engine                 | loc= 333 | seq= 1 | comb= 0
+  rtl\mod_arith\mod_add_sub_256.v               | modules=mod_add_sub_256              | loc=  57 | seq= 1 | comb= 0
+  rtl\mod_arith\mod_inv_256.v                   | modules=mod_inv_256                  | loc=  87 | seq= 1 | comb= 0
+  rtl\mod_arith\mod_mult_256.v                  | modules=mod_mult_256                 | loc=  66 | seq= 1 | comb= 0
+  rtl\point_ops\ecc_point_scalar_mult.v         | modules=ecc_point_scalar_mult        | loc= 202 | seq= 1 | comb= 0
+  rtl\point_ops\point_add_double.v              | modules=point_add_double             | loc= 358 | seq= 1 | comb= 0
 
-Static timing analysis executed under worst-case Slow-Slow Corner ($0.90\text{ V}, 125^\circ\text{C}$):
+SDC CLOCK CONSTRAINTS:
+  ecc_timing.sdc: port=clk | period=6.67 ns | target=150.02 MHz
 
-```
-Target Clock: clk (Period = 6.666 ns -> 150.00 MHz)
-Clock Uncertainty: Setup = 300 ps, Hold = 100 ps
-Critical Path: u_scalar_mult/u_pad/u_mult/r_accum_reg[255]/CLK -> sub_p1_reg[255]/D
-
-Data Required Time: 6.278 ns
-Data Arrival Time:  1.106 ns
------------------------------------------------------------------------------
-Total Negative Slack (TNS): 0.000 ns
-Fmax (Theoretical Maximum): 235.85 MHz
+ARITHMETIC DIVISION/MODULO CHECK: CLEAN (0 combinational / or % operators)
+================================================================================
 ```
 
 ---
 
 ## Verification and Test Coverage
 
-The verification testbench (`tb/tb_ecc_p256.v` and `sim/run_simulation.py`) executes 10 comprehensive assertion checks:
+Executed via Icarus Verilog (`iverilog -Wall -g2005`) and `vvp` (`sim/run_simulation.py`):
 
-```
+```text
 =====================================================================
    NIST P-256 HARDWARE CRYPTO ACCELERATOR ASIC TESTBENCH             
 =====================================================================
@@ -142,21 +140,23 @@ The verification testbench (`tb/tb_ecc_p256.v` and `sim/run_simulation.py`) exec
 [PASS] Test 5: Modular Inversion 2^(-1) mod P = (P+1)/2 verified.
 [PASS] Test 6: Jacobian Point Doubling 2P computed with valid Z3 projective coordinate.
 [PASS] Test 7: Jacobian Point Addition P + Q computed successfully.
-[PASS] Test 8: Constant-Time Montgomery Ladder Point Scalar Multiplication (k*G) completed.
-[PASS] Test 9: ECDSA Digital Signature pair (r, s) successfully generated.
-[PASS] Test 10: ECDSA Signature Verification completed with 100% signature validity.
+[PASS] Test 8: NIST P-256 3*G Scalar Multiplication bit-exact (Qx[31:0]=0xc6e7fd6c).
+[PASS] Test 9: ECDSA Sign exact KAT (r[31:0]=0xda672482, s[31:0]=0x67cf2949).
+[PASS] Test 10: ECDSA Valid Signature authenticated (R'.x mod n == r).
+[PASS] Test 11: ECDSA Verify correctly rejected forged 1-bit tampered signature.
 =====================================================================
-   TEST SUMMARY: PASSED 11 / 11 TESTS (100% PASS RATE)
+   TEST SUMMARY: PASSED 11 / 11 TESTS
 =====================================================================
+>>> ALL 11 VERIFICATION TESTS COMPLETED WITH 100% PASS RATE <<<
 ```
 
 ---
 
-## Physical Design and Sign-off
+## Physical Design and Geometry Audit
 
-- **GDSII Stream File:** `layout/gds/ecc_p256_top.gds` ($1500.0\,\mu\text{m} \times 1500.0\,\mu\text{m}$).
-- **Design Rule Check (DRC):** Clean (0 violations in SkyWater 130nm HPC+ rule deck).
-- **Layout Versus Schematic (LVS):** 100% matched across all 85,000 standard cell instances.
+- **GDSII Stream File:** `layout/gds/` (420.00 um x 420.00 um SkyWater 130nm floorplan).
+- **Geometric DRC (`layout/scripts/verify_gds_drc.py`):** Clean (0 geometric violations).
+- **Port & Netlist Audit (`layout/reports/lvs_report.txt`):** Top-level geometry documented; external Magic/Netgen required for SPICE LVS.
 
 ---
 
